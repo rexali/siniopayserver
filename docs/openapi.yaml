@@ -1,0 +1,108 @@
+
+openapi: 3.0.0
+info:
+  title: Fintech Wallet API
+  version: '1.0.0'
+paths:
+
+# users endpoints
+
+  /users:
+    post:
+      summary: Register user
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+                firstName: { type: string }
+                lastName: { type: string }
+                phoneNumber: { type: string }
+      responses:
+        '201': { description: Created }
+  /users/login:
+    post:
+      summary: User login
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200': { description: OK }
+
+  # Wallets endpoints
+
+  /wallets:
+    get:
+      summary: Get user's wallet
+      tags:
+        - wallets
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: OK } }
+  /wallets/deposit:
+    post:
+      summary: Deposit funds
+      tags:
+        - wallets
+      security: [{ bearerAuth: [] }]
+  /wallets/withdraw:
+    post:
+      summary: Withdraw funds
+      tags:
+        - wallets
+      security: [{ bearerAuth: [] }]
+  /wallets/transfer:
+    post:
+      summary: Transfer funds
+      tags:
+        - wallets
+      security: [{ bearerAuth: [] }]
+ 
+  # Transaction endpoints
+
+  /transactions:
+    get:
+      summary: Get all transactions
+      security: [{ bearerAuth: [] }]
+      tags:
+        - transactions 
+  
+  # Notification endpoints
+
+  /notififications:
+    post:
+      summary: Create a notifification
+      tags:
+        - notififications
+      requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId: {type: string}
+                  type: {type: string}
+                  message: {type: string}
+      responses:
+        '201': {description: ok}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
