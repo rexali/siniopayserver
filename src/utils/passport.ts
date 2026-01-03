@@ -2,7 +2,7 @@
 import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import dotenv from 'dotenv';
-import Admin from '../models/admin.model';
+// import Admin from '../models/admin.model';
 import User from '../models/User.model';
 dotenv.config();
 
@@ -24,8 +24,8 @@ passport.use('user-jwt', new JwtStrategy(opts, async (payload, done) => {
 
 passport.use('admin-jwt', new JwtStrategy(opts, async (payload, done) => {
   try {
-    const admin = await Admin.findByPk((payload as any).id);
-    if (admin) return done(null, admin);
+    // const admin = await Admin.findByPk((payload as any).id);
+    // if (admin) return done(null, admin);
     return done(null, false);
   } catch (err) {
     return done(err, false);
