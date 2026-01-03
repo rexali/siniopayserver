@@ -1,6 +1,6 @@
 # dependencies
 node_modules/
-dist/
+# dist/
 .env
 # local env files
 .env*.local
