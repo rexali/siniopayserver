@@ -54,12 +54,34 @@ app.use('/api/compliance', complianceSettingRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
     timestamp: new Date(),
     uptime: process.uptime(),
     memory: process.memoryUsage()
   });
+});
+
+const verifyToken = process.env.VERIFY_TOKEN;
+
+// Route for GET requests
+app.get('/', (req, res) => {
+  const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
+
+  if (mode === 'subscribe' && token === verifyToken) {
+    console.log('WEBHOOK VERIFIED');
+    res.status(200).send(challenge);
+  } else {
+    res.status(403).end();
+  }
+});
+
+// Route for POST requests
+app.post('/', (req, res) => {
+  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  console.log(`\n\nWebhook received ${timestamp}\n`);
+  console.log(JSON.stringify(req.body, null, 2));
+  res.status(200).end();
 });
 
 // API documentation
@@ -93,41 +115,41 @@ app.get('/api-docs', (req, res) => {
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
-  
+
   // Handle validation errors
   if (err.name === 'ValidationError') {
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'Validation Error',
-      details: err.message 
+      details: err.message
     });
   }
-  
+
   // Handle Sequelize errors
   if (err.name === 'SequelizeDatabaseError' || err.name === 'SequelizeValidationError') {
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'Database Error',
-      details: err.message 
+      details: err.message
     });
   }
-  
+
   // Handle JWT errors
   if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({ 
+    return res.status(401).json({
       error: 'Invalid Token',
-      details: err.message 
+      details: err.message
     });
   }
-  
+
   // Default error
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!' 
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!'
   });
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Not Found',
     message: `Cannot ${req.method} ${req.url}`
   });
@@ -141,27 +163,36 @@ const startServer = async () => {
     // Test database connection
     await sequelize.authenticate();
     console.log('Database connected successfully');
-    
+
     // Sync models
-    const syncOptions: any = { 
+    const syncOptions: any = {
       alter: process.env.NODE_ENV === 'development',
-      logging: process.env.NODE_ENV === 'development', 
+      logging: process.env.NODE_ENV === 'development',
       // force: process.env.NODE_ENV === 'development' 
     };
-    
+
     if (process.env.NODE_ENV === 'test') {
       syncOptions.force = true;
     }
-    
+
     await sequelize.sync(syncOptions);
     console.log('Database synced');
-    
+
     // Start server
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
     });
+
+    const server = app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+
+    server.keepAliveTimeout = 120 * 1000;
+
+    server.headersTimeout = 120 * 1000;
+
   } catch (error) {
     console.error('Unable to connect to database:', error);
     process.exit(1);
