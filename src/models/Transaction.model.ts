@@ -18,7 +18,7 @@ class Transaction extends Model<InferAttributes<Transaction>, InferCreationAttri
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   // virtual account
-  declare fromAccount?: User;
+  declare fromAccount?: User; 
   declare toAccount?: User;
   declare reviewer?: User;
 

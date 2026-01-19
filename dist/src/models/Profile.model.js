@@ -29,15 +29,53 @@ Profile.init({
         type: sequelize_1.DataTypes.STRING,
         allowNull: false
     },
+    firstName: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
+    },
+    lastName: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
+    },
+    middleName: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
+    },
+    nin: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
+    },
+    bvn: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
+    },
     dateOfBirth: {
         type: sequelize_1.DataTypes.DATEONLY
     },
     address: {
-        type: sequelize_1.DataTypes.JSONB,
-        defaultValue: {}
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
     },
     avatarUrl: {
         type: sequelize_1.DataTypes.TEXT
+    },
+    ninUrl: {
+        type: sequelize_1.DataTypes.TEXT
+    },
+    addressUrl: {
+        type: sequelize_1.DataTypes.TEXT
+    },
+    localGovt: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
+    },
+    state: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
+    },
+    country: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true
     },
     createdAt: {
         type: sequelize_1.DataTypes.DATE,
@@ -46,7 +84,7 @@ Profile.init({
     updatedAt: {
         type: sequelize_1.DataTypes.DATE,
         defaultValue: sequelize_1.DataTypes.NOW
-    }
+    },
 }, {
     sequelize: db_1.sequelize,
     tableName: 'profiles',

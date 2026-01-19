@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateAdminUserUpdate = exports.validateUserUpdate = exports.validateResetPassword = exports.validateForgotPassword = exports.validateTokenVerification = exports.validateEmailVerification = exports.validateLogin = exports.validateRegistration = void 0;
+exports.validateAdminUserUpdate = exports.validateUserUpdate = exports.validateResetPassword = exports.validateForgotPassword = exports.validateTokenVerification = exports.validateVerificationCode = exports.validateEmailVerification = exports.validateLogin = exports.validateRegistration = void 0;
 const express_validator_1 = require("express-validator");
 exports.validateRegistration = [
     (0, express_validator_1.body)('email')
@@ -52,6 +52,18 @@ exports.validateLogin = [
         .withMessage('Password is required')
 ];
 exports.validateEmailVerification = [
+    (0, express_validator_1.body)('token')
+        .optional()
+        .isString()
+        .withMessage('Token must be a string'),
+    (0, express_validator_1.body)('code')
+        .optional()
+        .isString()
+        .withMessage('Code must be a string')
+        .isLength({ min: 6, max: 6 })
+        .withMessage('Code must be 6 digits')
+];
+exports.validateVerificationCode = [
     (0, express_validator_1.body)('token')
         .optional()
         .isString()

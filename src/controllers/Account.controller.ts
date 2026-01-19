@@ -62,7 +62,7 @@ class AccountController {
       if (!account) {
         return res.status(404).json({ status: 'fail', data: null, message: 'Account not found'});
       }
-      res.json({ status: 'success', data: { account }, message: 'Account found' });
+      res.status(200).json({ status: 'success', data: { account }, message: 'Account found' });
     } catch (error: any) {
       console.log(error);
       res.status(500).json({ status: 'fail', data: null, message: 'Error! Internal server error: ' + error.message });
@@ -102,7 +102,7 @@ class AccountController {
       if (!account) {
         return res.status(404).json({ status: 'fail', data: null, message: 'Account not found'});
       }
-      res.json({ status: 'success', data: { account }, message: 'Account found' });
+      res.status(200).json({ status: 'success', data: { account }, message: 'Account found' });
     } catch (error: any) {
       console.log(error);
       res.status(500).json({ status: 'fail', data: null, message: 'Error! Internal server error: ' + error.message });

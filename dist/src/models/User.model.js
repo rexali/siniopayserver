@@ -98,4 +98,5 @@ User.init({
 });
 // Set up associations
 User.hasOne(Profile_model_1.default, { foreignKey: 'userId', as: 'profile' });
+Profile_model_1.default.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 exports.default = User;

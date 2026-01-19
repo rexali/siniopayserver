@@ -50,14 +50,15 @@ class KYCVerificationController {
         order: [['createdAt', 'DESC']]
       });
 
-      res.json({
+      res.json({ status: 'success', data: {
         total: kycVerifications.count,
         page: parseInt(page as string),
         totalPages: Math.ceil(kycVerifications.count / parseInt(limit as string)),
         verifications: kycVerifications.rows
-      });
-    } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      }, message: 'KYC Verifications found'});
+    } catch (error:any) {
+      console.error(error);
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error: ' + error.message });
     }
   }
 

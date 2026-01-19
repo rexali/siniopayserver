@@ -5,7 +5,6 @@ import Profile from '../models/Profile.model';
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
 import User from '../models/User.model';
-import { error } from 'console';
 
 class NotificationController {
   // Get all notifications (admin only)
@@ -39,14 +38,18 @@ class NotificationController {
         order: [['createdAt', 'DESC']]
       });
 
-      res.json({
-        total: notifications.count,
-        page: parseInt(page as string),
-        totalPages: Math.ceil(notifications.count / parseInt(limit as string)),
-        notifications: notifications.rows
+      res.status(200).json({
+        status: 'success',
+        data: {
+          total: notifications.count,
+          page: parseInt(page as string),
+          totalPages: Math.ceil(notifications.count / parseInt(limit as string)),
+          notifications: notifications.rows
+        },
+        message: 'Notifications found'
       });
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
     }
   }
 
@@ -121,11 +124,11 @@ class NotificationController {
         return res.status(403).json({ status: 'fail', data: null, message: 'Cannot update notifications for other users' });
       }
 
-      await notification.update(req.body);
-      res.json({ status: 'fail', data: {notification}, message: 'Notification updated' });
+      const updatedNotification = await notification.update(req.body);
+      res.json({ status: 'success', data: { notification: updatedNotification }, message: 'Notification updated' });
     } catch (error) {
       console.error(error);
-      
+
       res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
     }
   }
@@ -134,7 +137,7 @@ class NotificationController {
   async getUserNotifications(req: Request, res: Response) {
     try {
       const userId = req.params.userId;
-      const { page = 1, limit = 20, unreadOnly } = req.query;
+      const { page = 1, limit = 20, unreadOnly = 'true' } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
       const where: any = { userId };
@@ -152,7 +155,7 @@ class NotificationController {
 
       res.json(
         {
-          status: 'fail',
+          status: 'success',
           data: {
             total: notifications.count,
             unreadCount: await Notification.count({ where: { userId, read: false } }),
@@ -164,7 +167,7 @@ class NotificationController {
         }
       );
     } catch (error) {
-      console.error(error); 
+      console.error(error);
       res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
     }
   }
@@ -179,9 +182,9 @@ class NotificationController {
         { where: { userId, read: false } }
       );
 
-      res.json({ message: 'All notifications marked as read' });
+      res.json({ status: 'success', data: {}, message:'All notifications marked as read' });
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({  status: 'fail', data: null, message: 'Internal server error' });
     }
   }
 
@@ -189,7 +192,8 @@ class NotificationController {
   async bulkCreateNotifications(req: Request, res: Response) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.error(errors.array());
+      return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed'});
     }
 
     try {
@@ -211,13 +215,13 @@ class NotificationController {
       );
 
       if (validNotifications.length === 0) {
-        return res.status(400).json({ error: 'No valid users found' });
+        return res.status(400).json({ status: 'fail', data: null, message:'No valid users found' });
       }
 
-      const createdNotifications = await Notification.bulkCreate(validNotifications);
-      res.status(201).json(createdNotifications);
+      const notification = await Notification.bulkCreate(validNotifications);
+      res.status(201).json({ status: 'success', data: {notification}, message: 'Notification creted'});
     } catch (error) {
-      res.status(500).json({ error: 'Failed to create notifications' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Failed to create notifications' });
     }
   }
 }

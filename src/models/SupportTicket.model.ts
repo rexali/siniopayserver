@@ -14,9 +14,10 @@ class SupportTicket extends Model<InferAttributes<SupportTicket>, InferCreationA
   declare assignedTo: CreationOptional<ForeignKey<string>>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  
+  // virtual
   declare user?: any;
   declare assignee?: any;
+  declare replies?:any
 }
 
 SupportTicket.init({

@@ -17,9 +17,12 @@ const KYCVerification_routes_1 = __importDefault(require("./routes/KYCVerificati
 const LinkedAccount_routes_1 = __importDefault(require("./routes/LinkedAccount.routes"));
 const Notification_routes_1 = __importDefault(require("./routes/Notification.routes"));
 const SupportTicket_routes_1 = __importDefault(require("./routes/SupportTicket.routes"));
+const SupportTicketReply_routes_1 = __importDefault(require("./routes/SupportTicketReply.routes")); // Add this
+const UserDevice_routes_1 = __importDefault(require("./routes/UserDevice.routes")); // Add this
 const FAQ_routes_1 = __importDefault(require("./routes/FAQ.routes"));
 const AuditLog_routes_1 = __importDefault(require("./routes/AuditLog.routes"));
 const ComplianceSetting_routes_1 = __importDefault(require("./routes/ComplianceSetting.routes"));
+const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 // Middleware
 app.use((0, helmet_1.default)());
@@ -31,6 +34,8 @@ app.use((0, cors_1.default)({
 app.use((0, morgan_1.default)('combined'));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
+// app.use(express.static(__dirname + '/public'))
+app.use(express_1.default.static(path_1.default.join(process.cwd(), 'src/public')));
 // Security headers
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -48,6 +53,8 @@ app.use('/api/kyc', KYCVerification_routes_1.default);
 app.use('/api/linked-accounts', LinkedAccount_routes_1.default);
 app.use('/api/notifications', Notification_routes_1.default);
 app.use('/api/support-tickets', SupportTicket_routes_1.default);
+app.use('/api/support-ticket-replies', SupportTicketReply_routes_1.default); // Add this
+app.use('/api/user-devices', UserDevice_routes_1.default); // Add this
 app.use('/api/faqs', FAQ_routes_1.default);
 app.use('/api/audit-logs', AuditLog_routes_1.default);
 app.use('/api/compliance', ComplianceSetting_routes_1.default);
@@ -93,6 +100,8 @@ app.get('/api-docs', (req, res) => {
             linkedAccounts: '/api/linked-accounts',
             notifications: '/api/notifications',
             supportTickets: '/api/support-tickets',
+            supportTicketReplies: '/api/support-ticket-replies', // Add this
+            userDevices: '/api/user-devices', // Add this
             faqs: '/api/faqs',
             auditLogs: '/api/audit-logs',
             compliance: '/api/compliance'
@@ -103,6 +112,12 @@ app.get('/api-docs', (req, res) => {
             verifyEmail: 'POST /api/auth/verify-email',
             forgotPassword: 'POST /api/auth/forgot-password',
             resetPassword: 'POST /api/auth/reset-password'
+        },
+        deviceManagement: {
+            registerDevice: 'POST /api/user-devices/register',
+            getMyDevices: 'GET /api/user-devices/my-devices',
+            checkDeviceTrust: 'GET /api/user-devices/check-trust/:deviceId',
+            revokeOtherDevices: 'POST /api/user-devices/revoke-others'
         }
     });
 });

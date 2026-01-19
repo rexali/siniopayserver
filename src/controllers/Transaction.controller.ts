@@ -23,15 +23,15 @@ class TransactionController {
         limit: parseInt(limit as string),
         offset,
         include: [
-          { model: Account, as: 'fromAccount', attributes: ['id', 'accountNumber', 'accountType'] },
-          { model: Account, as: 'toAccount', attributes: ['id', 'accountNumber', 'accountType'] },
+          { model: Account, as: 'account', attributes: ['id', 'accountNumber', 'accountType'] },
+          // { model: Account, as: 'toAccount', attributes: ['id', 'accountNumber', 'accountType'] },
           {
             model: User,
             as: 'reviewer',
-            attributes: ['id', 'email'],
+            attributes: ['id', 'email'], 
             include: [{
               model: Profile,
-              as: 'profile',
+              as: 'profile', 
               attributes: ['id', 'fullName']
             }]
           }
@@ -39,14 +39,16 @@ class TransactionController {
         order: [['createdAt', 'DESC']]
       });
 
-      res.json({
+      res.status(200).json({ status: 'success', data:{
         total: transactions.count,
         page: parseInt(page as string),
         totalPages: Math.ceil(transactions.count / parseInt(limit as string)),
         transactions: transactions.rows
-      });
-    } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      }, message: 'Transaction found'});
+    } catch (error:any) {
+      console.error(error);
+      
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error: ' + error.message });
     }
   }
 
@@ -70,11 +72,12 @@ class TransactionController {
         ]
       });
       if (!transaction) {
-        return res.status(404).json({ error: 'Transaction not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'Transaction not found'});
       }
-      res.json(transaction);
-    } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(200).json({ status: 'success', data: { transaction}, message: 'Transaction found' });
+    } catch (error:any) {
+      console.error(error);  
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error: ' + error.message });
     }
   }
 
@@ -90,7 +93,7 @@ class TransactionController {
       if (!transactions) {
         return res.status(404).json({ status: 'fail', data: null, message: 'Transaction not found' });
       }
-      res.json({ status: 'success', data: { transactions }, message: 'Transaction found' });
+      res.status(200).json({ status: 'success', data: { transactions }, message: 'Transaction found' });
     } catch (error: any) {
       res.status(500).json({ status: 'fail', data: null, message: 'Internal server error: ' + error.message });
     }
@@ -169,13 +172,15 @@ class TransactionController {
   async updateTransaction(req: Request, res: Response) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.error(errors.array());
+      
+      return res.status(400).json({ status: 'fail', data: null, message: 'Error! '+errors.array()});
     }
 
     try {
       const transaction = await Transaction.findByPk(req.params.id);
       if (!transaction) {
-        return res.status(404).json({ error: 'Transaction not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'Transaction not found'});
       }
 
       // If reversing transaction, handle balance adjustments
@@ -209,10 +214,12 @@ class TransactionController {
         }
       } else {
         await transaction.update(req.body);
-        res.json(transaction);
+        res.status(200).json({ status: 'success', data: {transaction}, message: 'Transaction updated'});
       }
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to update transaction' });
+    } catch (error:any) {
+      console.error(error);
+      
+      res.status(500).json({ status: 'fail', data: null, message: 'Error! '+error.message});
     }
   }
 
@@ -239,15 +246,16 @@ class TransactionController {
         order: [['createdAt', 'DESC']]
       });
 
-      res.json({
+      res.status(200).json({ status: 'success', data:{
         total: transactions.count,
         page: parseInt(page as string),
         totalPages: Math.ceil(transactions.count / parseInt(limit as string)),
         transactions: transactions.rows
-      });
-    } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      } , message: 'Transaction found'});
+    } catch (error:any) {
+      console.error(error);
+      res.status(500).json({ status: 'fail', data: null, message: 'Error! '+error.message});
+    } 
   }
 }
 

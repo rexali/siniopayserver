@@ -22,6 +22,10 @@ Notification.init({
             key: 'id'
         }
     },
+    targetUserId: {
+        type: sequelize_1.DataTypes.UUID,
+        allowNull: true,
+    },
     type: {
         type: sequelize_1.DataTypes.ENUM('transaction', 'reminder', 'alert', 'system'),
         allowNull: false

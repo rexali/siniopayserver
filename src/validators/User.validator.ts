@@ -71,6 +71,21 @@ export const validateEmailVerification = [
 ];
 
 
+export const validateVerificationCode = [
+  body('token')
+    .optional()
+    .isString()
+    .withMessage('Token must be a string'),
+  
+  body('code')
+    .optional()
+    .isString()
+    .withMessage('Code must be a string')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('Code must be 6 digits')
+];
+
+
 export const validateTokenVerification = [
   body('token')
     .optional()

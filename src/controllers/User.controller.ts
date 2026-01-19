@@ -8,6 +8,9 @@ import AuditLog from '../models/AuditLog.model';
 import crypto from 'crypto';
 import { sendEmail } from '../utils/mailer';
 import Account from '../models/Account.model';
+import { sendEmailByResend } from '../utils/resendMailer';
+import UserDevice from '../models/UserDevice.model';
+// import Device from '../models/UserDevice.model';
 
 class UserController {
   // Register new user
@@ -24,7 +27,7 @@ class UserController {
       // Check if user already exists
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ error: 'Email already registered' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Email already registered' });
       }
 
       // Create user
@@ -43,20 +46,34 @@ class UserController {
         // dateOfBirth
       });
 
-      // Generate email verification token
-      // const verificationToken = jwt.sign(
-      //   {
-      //     userId: user.id,
-      //     email: user.email
-      //   },
-      //   process.env.JWT_SECRET || 'your-secret-key',
-      //   { expiresIn: '24h' }
-      // );
-      // Send verification email
+      // {
+      //   // Generate email verification token
+
+      //   const verificationToken = jwt.sign(
+      //     {
+      //       userId: user.id,
+      //       email: user.email
+      //     },
+      //     process.env.JWT_SECRET || 'your-secret-key',
+      //     { expiresIn: '24h' }
+      //   );
+      //   // Send verification email
+      //   const verificationLink = `${process.env.FRONTEND_URL}://confirm?token=${user.confirmationCode}&email=${email}`;
+
+      //   console.log(`Verification email sent to ${email}`);
+      //   console.log(`Verification link: ${verificationLink}`);
+      //   console.log(`Verification code: ${user.confirmationCode}`);
+      //   // Example using nodemailer or another email service
+      //   await sendEmailByResend({
+      //     to: email,
+      //     subject: 'Verify Your Email',
+      //     html: `Click <a href="${verificationLink}">here</a> to verify your email. Copy and paste your verification code. Your verification code is: ${user.confirmationCode}`,
+      //     from: 'SINIOPAY'
+      //   });
+      // }
       // await this.sendVerificationEmail(user.email, verificationToken, user.confirmationCode);
 
       // Generate JWT token
-      // const token = this.generateToken(user);
       const token = jwt.sign(
         {
           id: user.id,
@@ -185,6 +202,70 @@ class UserController {
     }
   }
 
+  // Register new user
+  async rememberThisDevice(req: Request, res: Response) {
+
+    try {
+      //  user_id: userId,
+      //     device_id: deviceId,
+      //     device_name: `${Platform.OS} Device`,
+      //     last_used: new Date().toISOString(),
+      //     trusted: true,
+
+      const { deviceName, lastActivityAt,userAgent,isTrusted, ipAddress, deviceId, token: teken } = req.body;
+
+      const token = teken || req.headers.authorization?.split(' ')[1];
+
+      if (!token) {
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token required' });
+      }
+
+      let userId: string;
+
+      // Verify JWT token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+
+      userId = decoded.id;
+
+      // Update user
+      const user = await User.findByPk(userId);
+
+      if (!user) {
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
+      }
+
+      // Create user
+      const device = await UserDevice.create({
+        deviceName,
+        isTrusted,
+        deviceId,
+        userId,
+        ipAddress,
+        userAgent
+      });
+
+      // Log the device registration
+      await AuditLog.create({
+        userId: user.id,
+        action: 'DEVICE_LOG',
+        resourceType: 'user',
+        resourceId: user.id,
+        details: { email: user.email, role: user.role }
+      });
+
+      res.status(201).json({
+        message: 'Device registered successfully',
+        status: 'success',
+        data: {
+          device
+        }
+      });
+    } catch (error: any) {
+      console.error('Device Registration error:', error);
+      res.status(500).json({ status: 'fail', data: { user: null, token: '' }, message: 'Error! Device Registration failed: ' + error.message });
+    }
+  }
+
   // Verify User login token
   async verifyUserToken(req: Request, res: Response) {
     try {
@@ -192,7 +273,7 @@ class UserController {
       const token = teken || req.headers.authorization?.split(' ')[1];
 
       if (!token) {
-        return res.status(400).json({ error: 'Verification token required' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token required' });
       }
 
       let userId: string;
@@ -207,11 +288,11 @@ class UserController {
       const user = await User.findByPk(userId);
 
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
       }
 
       // if (user.emailVerifiedAt) {
-      //   return res.status(400).json({ error: 'Email already verified' });
+      //   return res.status(400).json({ status:'fail',data:null, message: 'Email already verified' });
       // }
 
       // user.emailVerifiedAt = new Date();
@@ -240,23 +321,20 @@ class UserController {
             role: user.role,
             status: user.status,
             twoFactorAuthentication: user.twoFactorAuthentication,
-            profile: profile ? {
-              fullName: profile.fullName,
-              phone: profile.phone
-            } : null
+            profile
           },
-          token
+          token:token
         }
       });
 
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        return res.status(400).json({ error: 'Verification token expired' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token expired' });
       }
       if (error instanceof jwt.JsonWebTokenError) {
-        return res.status(400).json({ error: 'Invalid verification token' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Invalid verification token' });
       }
-      res.status(500).json({ error: 'Token verification failed' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Token verification failed' });
     }
   }
 
@@ -266,7 +344,7 @@ class UserController {
       const { token, code } = req.body;
 
       if (!token && !code) {
-        return res.status(400).json({ error: 'Verification token or code is required' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token or code is required' });
       }
 
       let userId: string;
@@ -279,7 +357,7 @@ class UserController {
         // Find user by confirmation code
         const user = await User.findOne({ where: { confirmationCode: code } });
         if (!user) {
-          return res.status(400).json({ error: 'Invalid verification code' });
+          return res.status(400).json({ status: 'fail', data: null, message: 'Invalid verification code' });
         }
         userId = user.id;
       }
@@ -287,11 +365,11 @@ class UserController {
       // Update user
       const user = await User.findByPk(userId);
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
       }
 
       if (user.emailVerifiedAt) {
-        return res.status(400).json({ error: 'Email already verified' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Email already verified' });
       }
 
       user.emailVerifiedAt = new Date();
@@ -308,22 +386,25 @@ class UserController {
       });
 
       res.json({
+        status: 'success',
         message: 'Email verified successfully',
-        user: {
-          id: user.id,
-          email: user.email,
-          status: user.status
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            status: user.status
+          }
         }
       });
 
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        return res.status(400).json({ error: 'Verification token expired' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token expired' });
       }
       if (error instanceof jwt.JsonWebTokenError) {
-        return res.status(400).json({ error: 'Invalid verification token' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Invalid verification token' });
       }
-      res.status(500).json({ error: 'Email verification failed' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Email verification failed' });
     }
   }
 
@@ -366,6 +447,125 @@ class UserController {
     } catch (error) {
       console.error('Resend verification error:', error);
       res.status(500).json({ error: 'Failed to resend verification email' });
+    }
+  }
+
+  // Send verification code
+  async sendVerificationCode(req: Request, res: Response) {
+    try {
+      const { token: teken } = req.body;
+      const token = teken || req.headers.authorization?.split(' ')[1];
+
+      if (!token) {
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token required' });
+      }
+
+      let userId: string;
+
+      // Verify JWT token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+
+      userId = decoded.id;
+
+      // Update user
+      const user = await User.findByPk(userId);
+
+      if (!user) {
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
+      }
+
+      // Log the verification
+      await AuditLog.create({
+        userId: user.id,
+        action: 'SEND_VERIFICATION_CODE',
+        resourceType: 'user',
+        resourceId: user.id,
+        details: { email: user.email }
+      });
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+      user.confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      await user.save();
+
+      res.json({
+        message: 'Code sent successfully',
+        status: 'success',
+        data: {
+          code
+        }
+      });
+
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token expired' });
+      }
+      if (error instanceof jwt.JsonWebTokenError) {
+        return res.status(400).json({ status: 'fail', data: null, message: 'Invalid verification token' });
+      }
+      res.status(500).json({ status: 'fail', data: null, message: 'Sending code failed' });
+    }
+  }
+
+
+  // Verify sent verification code
+  async verifyVerificationCode(req: Request, res: Response) {
+    try {
+      const { token: teken, code } = req.body;
+      const token = teken || req.headers.authorization?.split(' ')[1];
+
+      if (!token) {
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token required' });
+      }
+
+      let userId: string;
+
+      // Verify JWT token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+
+      userId = decoded.id;
+
+      if (!code) {
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification code required' });
+      }
+
+
+      // get user
+      const user = await User.findByPk(userId);
+
+      if (!user) {
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
+      }
+
+      // Log the verification
+      await AuditLog.create({
+        userId: user.id,
+        action: 'CODE_VERIFICATION',
+        resourceType: 'user',
+        resourceId: user.id,
+        details: { email: user.email }
+      });
+
+      if (user.confirmationCode !== code) {
+        return res.status(404).json({ status: 'fail', data: null, message: 'Code verification failed' });
+      }
+
+      res.json({
+        message: 'Code verified successfully',
+        status: 'success',
+        data: {
+          code
+        }
+      });
+
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        return res.status(400).json({ status: 'fail', data: null, message: 'Verification token expired' });
+      }
+      if (error instanceof jwt.JsonWebTokenError) {
+        return res.status(400).json({ status: 'fail', data: null, message: 'Invalid verification token' });
+      }
+      res.status(500).json({ status: 'fail', data: null, message: 'Code verification failed' });
     }
   }
 
@@ -420,7 +620,7 @@ class UserController {
 
       const user = await User.findByPk(userId);
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
       }
 
       // Update email
@@ -428,7 +628,7 @@ class UserController {
         // Check if email already exists
         const existingUser = await User.findOne({ where: { email } });
         if (existingUser) {
-          return res.status(400).json({ error: 'Email already registered' });
+          return res.status(400).json({ status: 'fail', data: null, message: 'Email already registered' });
         }
 
         user.email = email;
@@ -451,12 +651,12 @@ class UserController {
       // Update password
       if (password) {
         if (!currentPassword) {
-          return res.status(400).json({ error: 'Current password is required to change password' });
+          return res.status(400).json({ status: 'fail', data: null, message: 'Current password is required to change password' });
         }
 
         const isValidPassword = await user.comparePassword(currentPassword);
         if (!isValidPassword) {
-          return res.status(401).json({ error: 'Current password is incorrect' });
+          return res.status(401).json({ status: 'fail', data: null, message: 'Current password is incorrect' });
         }
 
         await user.updatePassword(password);
@@ -479,18 +679,21 @@ class UserController {
       });
 
       res.json({
+        status: 'success',
         message: 'User updated successfully',
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          status: user.status,
-          twoFactorAuthentication: user.twoFactorAuthentication,
-          emailVerifiedAt: user.emailVerifiedAt
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            twoFactorAuthentication: user.twoFactorAuthentication,
+            emailVerifiedAt: user.emailVerifiedAt
+          }
         }
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to update user' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Failed to update user' });
     }
   }
 
@@ -504,10 +707,14 @@ class UserController {
     try {
       const { email } = req.body;
 
-      const user = await User.findOne({ where: { email } });
+      const user = await User.findOne({
+        where: { email },
+        attributes: ['id', 'status', 'role']
+      });
+
       if (!user) {
         // Don't reveal that user doesn't exist for security
-        return res.json({ message: 'If an account exists with this email, you will receive a password reset link' });
+        return res.json({ status: 'success', data: null, message: 'If an account exists with this email, you will receive a password reset link' });
       }
 
       // Generate reset token
@@ -525,10 +732,19 @@ class UserController {
       // Send password reset email
       await this.sendPasswordResetEmail(user.email, resetPasswordToken);
 
-      res.json({ message: 'Password reset link sent to your email' });
+      // Log the update
+      await AuditLog.create({
+        userId: user.id,
+        resourceId: user.id,
+        action: 'password_reset_requested',
+        resourceType: 'user',
+        details: { email: email.trim(), timestamp: new Date().toISOString() },
+      });
+
+      res.json({ status: 'success', data: { user }, message: 'Password reset link sent to your email' });
     } catch (error) {
       console.error('Forgot password error:', error);
-      res.status(500).json({ error: 'Failed to process password reset request' });
+      res.status(500).json({ status: 'success', data: null, message: 'Failed to process password reset request' });
     }
   }
 
@@ -536,7 +752,9 @@ class UserController {
   async resetPassword(req: Request, res: Response) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.error(errors.array());
+
+      return res.status(400).json({ status: 'success', data: null, message: 'Validation failed' });
     }
 
     try {
@@ -546,12 +764,12 @@ class UserController {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
 
       if (decoded.type !== 'password_reset') {
-        return res.status(400).json({ error: 'Invalid token type' });
+        return res.status(400).json({ status: 'success', data: null, message: 'Invalid token type' });
       }
 
-      const user = await User.findByPk(decoded.userId);
+      const user = await User.findByPk(decoded.userId, { attributes: ['id', 'email', 'status', 'email'] });
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ status: 'success', data: null, message: 'User not found' });
       }
 
       // Update password
@@ -566,15 +784,15 @@ class UserController {
         details: { email: user.email }
       });
 
-      res.json({ message: 'Password reset successfully' });
+      res.json({ status: 'success', data: { user }, message: 'Password reset successfully' });
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
         return res.status(400).json({ error: 'Password reset token expired' });
       }
       if (error instanceof jwt.JsonWebTokenError) {
-        return res.status(400).json({ error: 'Invalid password reset token' });
+        return res.status(400).json({ status: 'success', data: null, message: 'Invalid password reset token' });
       }
-      res.status(500).json({ error: 'Failed to reset password' });
+      res.status(500).json({ status: 'success', data: null, message: 'Failed to reset password' });
     }
   }
 
@@ -604,13 +822,15 @@ class UserController {
       });
 
       res.json({
-        total: users.count,
-        page: parseInt(page as string),
-        totalPages: Math.ceil(users.count / parseInt(limit as string)),
-        users: users.rows
+        status: 'success', data: {
+          total: users.count,
+          page: parseInt(page as string),
+          totalPages: Math.ceil(users.count / parseInt(limit as string)),
+          users: users.rows
+        }, message: 'Users found'
       });
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
     }
   }
 
@@ -628,11 +848,11 @@ class UserController {
         attributes: { exclude: ['password'] }
       });
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
       }
-      res.json(user);
+      res.json({ status: 'fail', data: { user }, message: 'User found' });
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
     }
   }
 
@@ -646,7 +866,7 @@ class UserController {
     try {
       const user = await User.findByPk(req.params.id);
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
       }
 
       const userId = (req as any).user?.id;
@@ -671,13 +891,16 @@ class UserController {
       });
 
       res.json({
+        statsus: 'success',
         message: 'User updated successfully',
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          status: user.status,
-          twoFactorAuthentication: user.twoFactorAuthentication
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            twoFactorAuthentication: user.twoFactorAuthentication
+          }
         }
       });
     } catch (error) {
@@ -690,7 +913,7 @@ class UserController {
     try {
       const user = await User.findByPk(req.params.id);
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
       }
 
       const userId = (req as any).user?.id;
@@ -709,9 +932,9 @@ class UserController {
       });
 
       await user.destroy();
-      res.status(204).send();
+      res.status(204).json({ status: 'success', data: null, message: 'Deleted' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to delete user' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Failed to delete user' });
     }
   }
 
@@ -719,31 +942,32 @@ class UserController {
   async toggleTwoFactorAuthentication(req: Request, res: Response) {
     try {
       const userId = (req as any).user?.id;
-      const { enable } = req.body;
+      const { twoFactorAuthentication } = req.body;
 
       const user = await User.findByPk(userId);
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
       }
 
-      user.twoFactorAuthentication = enable;
+      user.twoFactorAuthentication = twoFactorAuthentication as boolean;
       await user.save();
 
       // Log the 2FA change
       await AuditLog.create({
         userId: userId,
-        action: enable ? 'ENABLE_2FA' : 'DISABLE_2FA',
+        action: twoFactorAuthentication ? 'ENABLE_2FA' : 'DISABLE_2FA',
         resourceType: 'user',
         resourceId: userId,
         details: { email: user.email }
       });
 
       res.json({
-        message: `Two-factor authentication ${enable ? 'enabled' : 'disabled'} successfully`,
-        twoFactorAuthentication: user.twoFactorAuthentication
+        status: 'success',
+        message: `Two-factor authentication ${twoFactorAuthentication ? 'enabled' : 'disabled'} successfully`,
+        data: { twoFactorAuthentication: user.twoFactorAuthentication }
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to update two-factor authentication' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Failed to update two-factor authentication' });
     }
   }
 
@@ -760,6 +984,22 @@ class UserController {
     );
   }
 
+  private async generateVerificationCode(email: string, token: string, code: string) {
+
+    console.log(`Verification email sent to ${email}`);
+    console.log(`Verification code: ${code}`);
+    // save to db
+    const codex = Math.ceil(Math.random() * 1000000);
+
+    //nodemailer or another email service
+    await sendEmailByResend({
+      to: email,
+      subject: 'Verify Your Code',
+      html: `Here is your verification code: ${code}`,
+      from: 'SINIOPAY'
+    });
+  }
+
   private async sendVerificationEmail(email: string, token: string, code: string) {
     // In a real application, implement email sending
     const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
@@ -769,10 +1009,11 @@ class UserController {
     console.log(`Verification code: ${code}`);
 
     // Example using nodemailer or another email service
-    await sendEmail({
+    await sendEmailByResend({
       to: email,
       subject: 'Verify Your Email',
-      html: `Click <a href="${verificationLink}">here</a> to verify your email. Your verification code is: ${code}`
+      html: `Click <a href="${verificationLink}">here</a> to verify your email. Your verification code is: ${code}`,
+      from: 'SINIOPAY'
     });
   }
 
@@ -784,10 +1025,11 @@ class UserController {
     console.log(`Reset link: ${resetLink}`);
 
     // Example using nodemailer or another email service
-    await sendEmail({
+    await sendEmailByResend({
       to: email,
       subject: 'Reset Your Password',
-      html: `Click <a href="${resetLink}">here</a> to reset your password.`
+      html: `Click <a href="${resetLink}">here</a> to reset your password.`,
+      from: 'SINIOPAY'
     });
   }
 }

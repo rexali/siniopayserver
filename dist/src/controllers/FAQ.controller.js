@@ -28,14 +28,18 @@ class FAQController {
                 ]
             });
             res.json({
-                total: faqs.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(faqs.count / parseInt(limit)),
-                faqs: faqs.rows
+                status: 'success',
+                data: {
+                    total: faqs.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(faqs.count / parseInt(limit)),
+                    faqs: faqs.rows
+                },
+                message: 'FAQs found'
             });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get FAQ by ID
@@ -43,44 +47,46 @@ class FAQController {
         try {
             const faq = await FAQ_model_1.default.findByPk(req.params.id);
             if (!faq) {
-                return res.status(404).json({ error: 'FAQ not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'FAQ not found' });
             }
-            res.json(faq);
+            res.json({ status: 'success', data: { faq }, message: 'FAQ found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Create FAQ (admin only)
     async createFAQ(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Vaidation failed' });
         }
         try {
             const faq = await FAQ_model_1.default.create(req.body);
-            res.status(201).json(faq);
+            res.status(201).json({ status: 'success', data: { faq }, message: 'FAQ created' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to create FAQ' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Failed to create FAQ' });
         }
     }
     // Update FAQ (admin only)
     async updateFAQ(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
         }
         try {
             const faq = await FAQ_model_1.default.findByPk(req.params.id);
             if (!faq) {
-                return res.status(404).json({ error: 'FAQ not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'FAQ not found' });
             }
-            await faq.update(req.body);
-            res.json(faq);
+            const updatedFAQ = await faq.update(req.body);
+            res.json({ status: 'success', data: { faq: updatedFAQ }, message: 'FAQ updated' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to update FAQ' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Delete FAQ (admin only)
@@ -88,13 +94,13 @@ class FAQController {
         try {
             const faq = await FAQ_model_1.default.findByPk(req.params.id);
             if (!faq) {
-                return res.status(404).json({ error: 'FAQ not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'FAQ not found' });
             }
             await faq.destroy();
-            res.status(204).send();
+            res.status(204).json({ status: 'success', data: {}, message: 'FAQ deleted' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to delete FAQ' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get FAQ categories
@@ -105,10 +111,10 @@ class FAQController {
                 group: ['category'],
                 where: { active: true }
             });
-            res.json(categories.map((cat) => cat.category));
+            res.json({ status: 'success', data: { faqCategories: categories.map((cat) => cat.category) }, message: 'Internal server error' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Search FAQs
@@ -116,7 +122,7 @@ class FAQController {
         try {
             const { q, category } = req.query;
             if (!q) {
-                return res.status(400).json({ error: 'Search query is required' });
+                return res.status(400).json({ status: 'fail', data: null, message: 'Search query is required' });
             }
             const where = {
                 active: true,
@@ -136,10 +142,10 @@ class FAQController {
                 ],
                 limit: 20
             });
-            res.json(faqs);
+            res.json({ status: 'success', data: { faqs }, message: 'FAQs found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Reorder FAQs
@@ -157,10 +163,10 @@ class FAQController {
             for (const update of updates) {
                 await FAQ_model_1.default.update({ orderIndex: update.orderIndex }, { where: { id: update.id } });
             }
-            res.json({ message: 'FAQs reordered successfully' });
+            res.json({ status: 'success', data: {}, message: 'FAQs reordered successfully' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to reorder FAQs' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Failed to reorder FAQs' });
         }
     }
 }

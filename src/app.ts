@@ -13,9 +13,12 @@ import kycRoutes from './routes/KYCVerification.routes';
 import linkedAccountRoutes from './routes/LinkedAccount.routes';
 import notificationRoutes from './routes/Notification.routes';
 import supportTicketRoutes from './routes/SupportTicket.routes';
+import supportTicketReplyRoutes from './routes/SupportTicketReply.routes'; // Add this
+import userDeviceRoutes from './routes/UserDevice.routes'; // Add this
 import faqRoutes from './routes/FAQ.routes';
 import auditLogRoutes from './routes/AuditLog.routes';
 import complianceSettingRoutes from './routes/ComplianceSetting.routes';
+import path from 'path';
 
 const app = express();
 
@@ -29,6 +32,8 @@ app.use(cors({
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// app.use(express.static(__dirname + '/public'))
+app.use(express.static(path.join(process.cwd(), 'src/public')))
 
 // Security headers
 app.use((req, res, next) => {
@@ -48,6 +53,8 @@ app.use('/api/kyc', kycRoutes);
 app.use('/api/linked-accounts', linkedAccountRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/support-tickets', supportTicketRoutes);
+app.use('/api/support-ticket-replies', supportTicketReplyRoutes); // Add this
+app.use('/api/user-devices', userDeviceRoutes); // Add this
 app.use('/api/faqs', faqRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/compliance', complianceSettingRoutes);
@@ -66,6 +73,7 @@ const verifyToken = process.env.VERIFY_TOKEN;
 
 // Route for GET requests
 app.get('/', (req, res) => {
+
   const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
 
   if (mode === 'subscribe' && token === verifyToken) {
@@ -98,6 +106,8 @@ app.get('/api-docs', (req, res) => {
       linkedAccounts: '/api/linked-accounts',
       notifications: '/api/notifications',
       supportTickets: '/api/support-tickets',
+      supportTicketReplies: '/api/support-ticket-replies', // Add this
+      userDevices: '/api/user-devices', // Add this
       faqs: '/api/faqs',
       auditLogs: '/api/audit-logs',
       compliance: '/api/compliance'
@@ -108,6 +118,12 @@ app.get('/api-docs', (req, res) => {
       verifyEmail: 'POST /api/auth/verify-email',
       forgotPassword: 'POST /api/auth/forgot-password',
       resetPassword: 'POST /api/auth/reset-password'
+    },
+    deviceManagement: {
+      registerDevice: 'POST /api/user-devices/register',
+      getMyDevices: 'GET /api/user-devices/my-devices',
+      checkDeviceTrust: 'GET /api/user-devices/check-trust/:deviceId',
+      revokeOtherDevices: 'POST /api/user-devices/revoke-others'
     }
   });
 });

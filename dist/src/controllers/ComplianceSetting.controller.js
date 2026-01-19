@@ -27,14 +27,19 @@ class ComplianceSettingController {
                 ]
             });
             res.json({
-                total: complianceSettings.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(complianceSettings.count / parseInt(limit)),
-                settings: complianceSettings.rows
+                status: 'success',
+                data: {
+                    total: complianceSettings.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(complianceSettings.count / parseInt(limit)),
+                    settings: complianceSettings.rows
+                },
+                message: 'Settings found'
             });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get compliance setting by ID
@@ -70,7 +75,8 @@ class ComplianceSettingController {
     async createComplianceSetting(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
         }
         try {
             // Check if key already exists
@@ -78,7 +84,7 @@ class ComplianceSettingController {
                 where: { settingKey: req.body.settingKey }
             });
             if (existingSetting) {
-                return res.status(400).json({ error: 'Setting key already exists' });
+                return res.status(400).json({ status: 'fail', data: null, message: 'Failed to create setting: Setting key already exists' });
             }
             const complianceSetting = await ComplianceSetting_model_1.default.create(req.body);
             // Log audit action
@@ -95,22 +101,24 @@ class ComplianceSettingController {
                     }
                 });
             }
-            res.status(201).json(complianceSetting);
+            res.status(201).json({ status: 'success', data: { setting: complianceSetting }, message: 'Compliance setting created' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to create compliance setting' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Update compliance setting (super admin only)
     async updateComplianceSetting(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
         }
         try {
             const complianceSetting = await ComplianceSetting_model_1.default.findByPk(req.params.id);
             if (!complianceSetting) {
-                return res.status(404).json({ error: 'Compliance setting not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Compliance setting not found' });
             }
             const previousValue = complianceSetting.settingValue;
             await complianceSetting.update(req.body);
@@ -129,10 +137,11 @@ class ComplianceSettingController {
                     }
                 });
             }
-            res.json(complianceSetting);
+            res.json({ status: 'success', data: { setting: complianceSetting }, message: 'Compliance setting updated' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to update compliance setting' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Delete compliance setting (super admin only)
@@ -140,7 +149,7 @@ class ComplianceSettingController {
         try {
             const complianceSetting = await ComplianceSetting_model_1.default.findByPk(req.params.id);
             if (!complianceSetting) {
-                return res.status(404).json({ error: 'Compliance setting not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Compliance setting not found' });
             }
             // Log audit action
             const userId = req.user?.id;
@@ -157,10 +166,10 @@ class ComplianceSettingController {
                 });
             }
             await complianceSetting.destroy();
-            res.status(204).send();
+            res.status(204).json({ status: 'success', data: {}, message: 'Setting deleted' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to delete compliance setting' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Failed to delete compliance setting' });
         }
     }
     // Get settings by type

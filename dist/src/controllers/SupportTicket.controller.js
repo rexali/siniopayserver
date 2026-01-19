@@ -54,14 +54,19 @@ class SupportTicketController {
                 ]
             });
             res.json({
-                total: supportTickets.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(supportTickets.count / parseInt(limit)),
-                tickets: supportTickets.rows
+                status: 'success',
+                data: {
+                    total: supportTickets.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(supportTickets.count / parseInt(limit)),
+                    tickets: supportTickets.rows
+                },
+                message: 'Tickets found'
             });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get support ticket by ID
@@ -91,51 +96,54 @@ class SupportTicketController {
                 ]
             });
             if (!supportTicket) {
-                return res.status(404).json({ error: 'Support ticket not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Support ticket not found' });
             }
-            res.json(supportTicket);
+            res.json({ status: 'success', data: { supportTicket }, message: 'Ticket found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Create support ticket
     async createSupportTicket(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
         }
         try {
             // Check if user exists
             const user = await User_model_1.default.findByPk(req.body.userId);
             if (!user) {
-                return res.status(404).json({ error: 'User not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
             }
             const supportTicket = await SupportTicket_model_1.default.create(req.body);
             // Create notification for admins
-            await this.notifyAdminsAboutNewTicket(supportTicket);
-            res.status(201).json(supportTicket);
+            // await this.notifyAdminsAboutNewTicket(supportTicket);
+            res.status(201).json({ status: 'success', data: { ticket: supportTicket }, message: 'Ticket created' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to create support ticket' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Update support ticket
     async updateSupportTicket(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
         }
         try {
             const supportTicket = await SupportTicket_model_1.default.findByPk(req.params.id);
             if (!supportTicket) {
-                return res.status(404).json({ error: 'Support ticket not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Support ticket not found' });
             }
             // Check if assignedTo is a valid admin
             if (req.body.assignedTo) {
                 const assignee = await User_model_1.default.findByPk(req.body.assignedTo);
                 if (!assignee || !['admin', 'super_admin'].includes(assignee.role)) {
-                    return res.status(400).json({ error: 'Assignee must be an admin' });
+                    return res.status(400).json({ status: 'fail', data: null, message: 'Assignee must be an admin' });
                 }
             }
             const previousStatus = supportTicket.status;
@@ -148,10 +156,10 @@ class SupportTicketController {
             if (req.body.status && req.body.status !== previousStatus) {
                 await this.notifyUserAboutStatusChange(supportTicket, previousStatus);
             }
-            res.json(supportTicket);
+            res.json({ status: 'success', data: { supportTicket }, message: 'Ticket updated' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to update support ticket' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Failed to update support ticket' });
         }
     }
     // Delete support ticket
@@ -159,13 +167,13 @@ class SupportTicketController {
         try {
             const supportTicket = await SupportTicket_model_1.default.findByPk(req.params.id);
             if (!supportTicket) {
-                return res.status(404).json({ error: 'Support ticket not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Support ticket not found' });
             }
             await supportTicket.destroy();
-            res.status(204).send();
+            res.status(204).json({ status: 'success', data: {}, message: 'Ticket deleted' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to delete support ticket' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Failed to delete support ticket' });
         }
     }
     // Get user's support tickets
@@ -193,14 +201,17 @@ class SupportTicketController {
                 order: [['createdAt', 'DESC']]
             });
             res.json({
-                total: supportTickets.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(supportTickets.count / parseInt(limit)),
-                tickets: supportTickets.rows
+                status: 'success',
+                data: {
+                    total: supportTickets.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(supportTickets.count / parseInt(limit)),
+                    tickets: supportTickets.rows
+                }, message: 'Tickets found'
             });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get tickets assigned to admin
@@ -234,14 +245,18 @@ class SupportTicketController {
                 ]
             });
             res.json({
-                total: supportTickets.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(supportTickets.count / parseInt(limit)),
-                tickets: supportTickets.rows
+                status: 'success',
+                data: {
+                    total: supportTickets.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(supportTickets.count / parseInt(limit)),
+                    tickets: supportTickets.rows
+                },
+                message: 'Tickets found'
             });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get ticket statistics
@@ -264,20 +279,24 @@ class SupportTicketController {
             const totalTickets = stats.reduce((sum, stat) => sum + parseInt(stat.get('count')), 0);
             const openTickets = stats.find((stat) => stat.get('status') === 'open')?.get('count') || 0;
             res.json({
-                total: totalTickets,
-                open: openTickets,
-                byStatus: stats.map((stat) => ({
-                    status: stat.get('status'),
-                    count: stat.get('count')
-                })),
-                byPriority: priorityStats.map((stat) => ({
-                    priority: stat.get('priority'),
-                    count: stat.get('count')
-                }))
+                status: 'success',
+                data: {
+                    total: totalTickets,
+                    open: openTickets,
+                    byStatus: stats.map((stat) => ({
+                        status: stat.get('status'),
+                        count: stat.get('count')
+                    })),
+                    byPriority: priorityStats.map((stat) => ({
+                        priority: stat.get('priority'),
+                        count: stat.get('count')
+                    }))
+                },
+                message: 'Ticket statistics'
             });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Private helper methods

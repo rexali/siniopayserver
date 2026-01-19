@@ -26,8 +26,8 @@ class TransactionController {
                 limit: parseInt(limit),
                 offset,
                 include: [
-                    { model: Account_model_1.default, as: 'fromAccount', attributes: ['id', 'accountNumber', 'accountType'] },
-                    { model: Account_model_1.default, as: 'toAccount', attributes: ['id', 'accountNumber', 'accountType'] },
+                    { model: Account_model_1.default, as: 'account', attributes: ['id', 'accountNumber', 'accountType'] },
+                    // { model: Account, as: 'toAccount', attributes: ['id', 'accountNumber', 'accountType'] },
                     {
                         model: User_model_1.default,
                         as: 'reviewer',
@@ -41,15 +41,16 @@ class TransactionController {
                 ],
                 order: [['createdAt', 'DESC']]
             });
-            res.json({
-                total: transactions.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(transactions.count / parseInt(limit)),
-                transactions: transactions.rows
-            });
+            res.status(200).json({ status: 'success', data: {
+                    total: transactions.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(transactions.count / parseInt(limit)),
+                    transactions: transactions.rows
+                }, message: 'Transaction found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error: ' + error.message });
         }
     }
     // Get transaction by ID
@@ -72,12 +73,13 @@ class TransactionController {
                 ]
             });
             if (!transaction) {
-                return res.status(404).json({ error: 'Transaction not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Transaction not found' });
             }
-            res.json(transaction);
+            res.status(200).json({ status: 'success', data: { transaction }, message: 'Transaction found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error: ' + error.message });
         }
     }
     // Get transaction by ID
@@ -91,7 +93,7 @@ class TransactionController {
             if (!transactions) {
                 return res.status(404).json({ status: 'fail', data: null, message: 'Transaction not found' });
             }
-            res.json({ status: 'success', data: { transactions }, message: 'Transaction found' });
+            res.status(200).json({ status: 'success', data: { transactions }, message: 'Transaction found' });
         }
         catch (error) {
             res.status(500).json({ status: 'fail', data: null, message: 'Internal server error: ' + error.message });
@@ -157,12 +159,13 @@ class TransactionController {
     async updateTransaction(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Error! ' + errors.array() });
         }
         try {
             const transaction = await Transaction_model_1.default.findByPk(req.params.id);
             if (!transaction) {
-                return res.status(404).json({ error: 'Transaction not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Transaction not found' });
             }
             // If reversing transaction, handle balance adjustments
             if (req.body.status === 'reversed' && transaction.status === 'completed') {
@@ -192,11 +195,12 @@ class TransactionController {
             }
             else {
                 await transaction.update(req.body);
-                res.json(transaction);
+                res.status(200).json({ status: 'success', data: { transaction }, message: 'Transaction updated' });
             }
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to update transaction' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Error! ' + error.message });
         }
     }
     // Get transactions for specific account
@@ -220,15 +224,16 @@ class TransactionController {
                 ],
                 order: [['createdAt', 'DESC']]
             });
-            res.json({
-                total: transactions.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(transactions.count / parseInt(limit)),
-                transactions: transactions.rows
-            });
+            res.status(200).json({ status: 'success', data: {
+                    total: transactions.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(transactions.count / parseInt(limit)),
+                    transactions: transactions.rows
+                }, message: 'Transaction found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Error! ' + error.message });
         }
     }
 }

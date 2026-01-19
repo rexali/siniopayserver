@@ -33,13 +33,16 @@ class AuditLogController {
       });
 
       res.json({
+        status: 'success', 
+        data: {
         total: auditLogs.count,
         page: parseInt(page as string),
         totalPages: Math.ceil(auditLogs.count / parseInt(limit as string)),
         logs: auditLogs.rows
-      });
+      }, 
+      message: 'logs found'});
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({status: 'fail', data: null, message: 'Internal server error' });
     } 
   }
 

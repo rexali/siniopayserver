@@ -52,15 +52,16 @@ class KYCVerificationController {
                 ],
                 order: [['createdAt', 'DESC']]
             });
-            res.json({
-                total: kycVerifications.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(kycVerifications.count / parseInt(limit)),
-                verifications: kycVerifications.rows
-            });
+            res.json({ status: 'success', data: {
+                    total: kycVerifications.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(kycVerifications.count / parseInt(limit)),
+                    verifications: kycVerifications.rows
+                }, message: 'KYC Verifications found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error: ' + error.message });
         }
     }
     // Get KYC verification by ID

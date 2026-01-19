@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const db_1 = require("../config/db");
 const User_model_1 = __importDefault(require("./User.model")); // Change from Profile to User
+const Transaction_model_1 = __importDefault(require("./Transaction.model"));
 class Account extends sequelize_1.Model {
 }
 Account.init({
@@ -63,4 +64,6 @@ Account.init({
 // Update associations
 Account.belongsTo(User_model_1.default, { foreignKey: 'userId', as: 'user' });
 User_model_1.default.hasMany(Account, { foreignKey: 'userId' });
+Account.hasMany(Transaction_model_1.default, { foreignKey: 'accountId', as: 'transactions' });
+Transaction_model_1.default.belongsTo(Account, { foreignKey: 'accountId', as: 'account' });
 exports.default = Account;

@@ -6,13 +6,14 @@ import User from './User.model';
 class Notification extends Model<InferAttributes<Notification>, InferCreationAttributes<Notification>> {
   declare id: CreationOptional<string>;
   declare userId: ForeignKey<string>;
+  declare targetUserId: ForeignKey<string | undefined | null>;
   declare type: string;
   declare title: string;
   declare message: string;
   declare read: CreationOptional<boolean>;
   declare metadata: CreationOptional<any>;
   declare createdAt: CreationOptional<Date>;
-  
+
   declare user?: any;
 }
 
@@ -29,6 +30,10 @@ Notification.init({
       model: 'users',
       key: 'id'
     }
+  },
+  targetUserId: {
+    type: DataTypes.UUID,
+    allowNull: true,
   },
   type: {
     type: DataTypes.ENUM('transaction', 'reminder', 'alert', 'system'),
@@ -67,6 +72,6 @@ Notification.init({
 });
 
 Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-User.hasMany(Notification, { foreignKey: 'userId', as:"notifications" });
+User.hasMany(Notification, { foreignKey: 'userId', as: "notifications" });
 
 export default Notification;

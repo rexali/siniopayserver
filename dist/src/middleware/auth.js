@@ -3,39 +3,38 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireReauthentication = exports.require2FA = exports.authorize = exports.authenticate = void 0;
+exports.trackDeviceActivity = exports.requireTrustedDevice = exports.requireReauthentication = exports.require2FA = exports.authorize = exports.authenticate = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_model_1 = __importDefault(require("../models/User.model"));
+const UserDevice_model_1 = __importDefault(require("../models/UserDevice.model"));
 const authenticate = async (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
-        return res.status(401).json({ error: 'Access denied. No token provided.' });
+        return res.status(401).json({ status: 'fail', data: null, messsage: 'Access denied. No token provided.' });
     }
     try {
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'your-secret-key');
         // Verify user exists and is active
         const user = await User_model_1.default.findByPk(decoded.id);
         if (!user) {
-            return res.status(401).json({ error: 'User not found.' });
+            return res.status(401).json({ status: 'fail', data: null, messsage: 'User not found.' });
         }
         // if (user.status !== 'active') {
-        //   return res.status(403).json({ 
-        //     error: 'Account is not active.',
-        //     status: user.status 
-        //   });
+        //   return res.status(403).json(
+        //     { status: 'fail', data: null, messsage: 'Account is not active.' });
         // }
-        // Check if email is verified
+        // // Check if email is verified
         // if (!user.emailVerifiedAt) {
-        //   return res.status(403).json({ 
-        //     error: 'Email not verified. Please verify your email to continue.',
-        //     needsVerification: true 
+        //   return res.status(403).json({
+        //     status: 'fail', data: null, messsage: 'Email not verified. Please verify your email to continue.',
+        //     needsVerification: true
         //   });
         // }
         // Check if password was changed after token was issued
         if (user.passwordChangedAt) {
             const tokenIssuedAt = decoded.iat * 1000; // Convert to milliseconds
             if (user.passwordChangedAt.getTime() > tokenIssuedAt) {
-                return res.status(401).json({ error: 'Password was changed. Please login again.' });
+                return res.status(401).json({ status: 'fail', data: null, messsage: 'Password was changed. Please login again.' });
             }
         }
         req.user = {
@@ -123,3 +122,66 @@ const requireReauthentication = async (req, res, next) => {
     }
 };
 exports.requireReauthentication = requireReauthentication;
+// Middleware to check device trust
+const requireTrustedDevice = async (req, res, next) => {
+    const userId = req.user?.id;
+    const deviceId = req.headers['x-device-id'];
+    if (!deviceId) {
+        return res.status(400).json({ status: 'fail', data: null, messsage: 'Device ID is required' });
+    }
+    try {
+        const device = await UserDevice_model_1.default.findOne({
+            where: {
+                userId,
+                deviceId,
+                isActive: true,
+                isTrusted: true
+            }
+        });
+        if (!device) {
+            return res.status(403).json({
+                status: 'fail', data: null, messsage: 'Trusted device required for this operation',
+                requiresDeviceTrust: true
+            });
+        }
+        next();
+    }
+    catch (error) {
+        res.status(500).json({ status: 'fail', data: null, messsage: 'Failed to check device trust' });
+    }
+};
+exports.requireTrustedDevice = requireTrustedDevice;
+// Middleware to track device activity
+const trackDeviceActivity = async (req, res, next) => {
+    const userId = req.user?.id;
+    const deviceId = req.headers['x-device-id'];
+    if (userId && deviceId) {
+        try {
+            // Update device activity in background (don't block request)
+            setTimeout(async () => {
+                try {
+                    const device = await UserDevice_model_1.default.findOne({
+                        where: {
+                            userId,
+                            deviceId,
+                            isActive: true
+                        }
+                    });
+                    if (device) {
+                        await device.update({
+                            lastActivityAt: new Date()
+                        });
+                    }
+                }
+                catch (error) {
+                    console.error('Failed to update device activity:', error);
+                }
+            }, 0);
+        }
+        catch (error) {
+            // Silently fail - don't interrupt the request
+        }
+    }
+    next();
+};
+exports.trackDeviceActivity = trackDeviceActivity;

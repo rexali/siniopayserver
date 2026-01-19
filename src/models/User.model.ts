@@ -2,8 +2,6 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 import { sequelize } from '../config/db';
 import bcrypt from 'bcrypt';
 import Profile from './Profile.model';
-import Transaction from './Transaction.model';
-import Account from './Account.model';
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
   declare id: CreationOptional<string>;
@@ -118,5 +116,7 @@ User.init({
 
 // Set up associations
 User.hasOne(Profile, { foreignKey: 'userId', as: 'profile' });
+Profile.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 
 export default User;

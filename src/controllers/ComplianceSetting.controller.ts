@@ -9,7 +9,7 @@ class ComplianceSettingController {
     try {
       const { page = 1, limit = 50, settingType, active } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
-      
+
       const where: any = {};
       if (settingType) where.settingType = settingType;
       if (active !== undefined) where.active = active === 'true';
@@ -25,13 +25,18 @@ class ComplianceSettingController {
       });
 
       res.json({
-        total: complianceSettings.count,
-        page: parseInt(page as string),
-        totalPages: Math.ceil(complianceSettings.count / parseInt(limit as string)),
-        settings: complianceSettings.rows
+        status: 'success',
+        data: {
+          total: complianceSettings.count,
+          page: parseInt(page as string),
+          totalPages: Math.ceil(complianceSettings.count / parseInt(limit as string)),
+          settings: complianceSettings.rows
+        },
+        message: 'Settings found'
       });
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      console.error(error);
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
     }
   }
 
@@ -68,7 +73,8 @@ class ComplianceSettingController {
   async createComplianceSetting(req: Request, res: Response) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.error(errors.array());
+      return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
     }
 
     try {
@@ -78,11 +84,11 @@ class ComplianceSettingController {
       });
 
       if (existingSetting) {
-        return res.status(400).json({ error: 'Setting key already exists' });
+        return res.status(400).json({ status: 'fail', data: null, message: 'Failed to create setting: Setting key already exists' });
       }
 
       const complianceSetting = await ComplianceSetting.create(req.body);
-      
+
       // Log audit action
       const userId = (req as any).user?.id;
       if (userId) {
@@ -98,9 +104,10 @@ class ComplianceSettingController {
         });
       }
 
-      res.status(201).json(complianceSetting);
+      res.status(201).json({ status: 'success', data: { setting: complianceSetting }, message: 'Compliance setting created' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to create compliance setting' });
+      console.error(error);
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
     }
   }
 
@@ -108,17 +115,18 @@ class ComplianceSettingController {
   async updateComplianceSetting(req: Request, res: Response) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.error(errors.array());
+      return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
     }
 
     try {
       const complianceSetting = await ComplianceSetting.findByPk(req.params.id);
       if (!complianceSetting) {
-        return res.status(404).json({ error: 'Compliance setting not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'Compliance setting not found' });
       }
 
       const previousValue = complianceSetting.settingValue;
-      
+
       await complianceSetting.update(req.body);
 
       // Log audit action
@@ -137,9 +145,10 @@ class ComplianceSettingController {
         });
       }
 
-      res.json(complianceSetting);
+      res.json({ status: 'success', data: { setting: complianceSetting }, message: 'Compliance setting updated' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to update compliance setting' });
+      console.error(error);
+      res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
     }
   }
 
@@ -148,7 +157,7 @@ class ComplianceSettingController {
     try {
       const complianceSetting = await ComplianceSetting.findByPk(req.params.id);
       if (!complianceSetting) {
-        return res.status(404).json({ error: 'Compliance setting not found' });
+        return res.status(404).json({ status: 'fail', data: null, message: 'Compliance setting not found' });
       }
 
       // Log audit action
@@ -167,9 +176,9 @@ class ComplianceSettingController {
       }
 
       await complianceSetting.destroy();
-      res.status(204).send();
+      res.status(204).json({ status: 'success', data: {}, message: 'Setting deleted' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to delete compliance setting' });
+      res.status(500).json({ status: 'fail', data: null, message: 'Failed to delete compliance setting' });
     }
   }
 
@@ -178,7 +187,7 @@ class ComplianceSettingController {
     try {
       const { type } = req.params;
       const { active } = req.query;
-      
+
       const where: any = { settingType: type };
       if (active !== undefined) where.active = active === 'true';
 
@@ -197,16 +206,16 @@ class ComplianceSettingController {
   async checkTransactionLimit(req: Request, res: Response) {
     try {
       const { userId, amount, transactionType } = req.body;
-      
+
       if (!userId || !amount || !transactionType) {
         return res.status(400).json({ error: 'Missing required parameters' });
       }
 
       // Get transaction limit settings
       const limitSettings = await ComplianceSetting.findAll({
-        where: { 
+        where: {
           settingType: 'transaction_limit',
-          active: true 
+          active: true
         }
       });
 
@@ -245,16 +254,16 @@ class ComplianceSettingController {
   async checkAMLCompliance(req: Request, res: Response) {
     try {
       const { userId, amount, fromAccountId, toAccountId } = req.body;
-      
+
       if (!userId || !amount) {
         return res.status(400).json({ error: 'Missing required parameters' });
       }
 
       // Get AML rules
       const amlRules = await ComplianceSetting.findAll({
-        where: { 
+        where: {
           settingType: 'aml_rule',
-          active: true 
+          active: true
         }
       });
 

@@ -74,5 +74,7 @@ Account.init({
 // Update associations
 Account.belongsTo(User, { foreignKey: 'userId', as: 'user' })
 User.hasMany(Account, { foreignKey: 'userId' })
+Account.hasMany(Transaction, { foreignKey: 'accountId', as: 'transactions' });
+Transaction.belongsTo(Account, { foreignKey: 'accountId', as: 'account' })
 
 export default Account;

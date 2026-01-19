@@ -36,14 +36,18 @@ class AuditLogController {
                 order: [['createdAt', 'DESC']]
             });
             res.json({
-                total: auditLogs.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(auditLogs.count / parseInt(limit)),
-                logs: auditLogs.rows
+                status: 'success',
+                data: {
+                    total: auditLogs.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(auditLogs.count / parseInt(limit)),
+                    logs: auditLogs.rows
+                },
+                message: 'logs found'
             });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get audit log by ID

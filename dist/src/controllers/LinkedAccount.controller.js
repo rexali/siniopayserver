@@ -41,14 +41,18 @@ class LinkedAccountController {
                 order: [['createdAt', 'DESC']]
             });
             res.json({
-                total: linkedAccounts.count,
-                page: parseInt(page),
-                totalPages: Math.ceil(linkedAccounts.count / parseInt(limit)),
-                linkedAccounts: linkedAccounts.rows
+                status: 'success',
+                data: {
+                    total: linkedAccounts.count,
+                    page: parseInt(page),
+                    totalPages: Math.ceil(linkedAccounts.count / parseInt(limit)),
+                    linkedAccounts: linkedAccounts.rows
+                },
+                message: 'Linked accounts found'
             });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get linked account by ID
@@ -72,34 +76,35 @@ class LinkedAccountController {
                 ]
             });
             if (!linkedAccount) {
-                return res.status(404).json({ error: 'Linked account not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Linked account not found' });
             }
-            res.json(linkedAccount);
+            res.json({ status: 'success', data: { linkedAccount }, message: 'Linked account found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Create linked account
     async createLinkedAccount(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
         }
         try {
             // Check if user exists
             const user = await Profile_model_1.default.findByPk(req.body.userId);
             if (!user) {
-                return res.status(404).json({ error: 'User not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'User not found' });
             }
             // Check if account exists
             const account = await Account_model_1.default.findByPk(req.body.accountId);
             if (!account) {
-                return res.status(404).json({ error: 'Account not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Account not found' });
             }
             // Check if account belongs to user
             if (account.userId !== req.body.userId) {
-                return res.status(403).json({ error: 'Account does not belong to user' });
+                return res.status(403).json({ status: 'fail', data: null, message: 'Account does not belong to user' });
             }
             // Check for duplicate linked account
             const existingLinkedAccount = await LinkedAccount_model_1.default.findOne({
@@ -111,31 +116,32 @@ class LinkedAccountController {
                 }
             });
             if (existingLinkedAccount) {
-                return res.status(400).json({ error: 'Account already linked' });
+                return res.status(400).json({ status: 'fail', data: null, message: 'Account already linked' });
             }
             const linkedAccount = await LinkedAccount_model_1.default.create(req.body);
-            res.status(201).json(linkedAccount);
+            res.status(201).json({ status: 'success', data: { linkedAccount }, message: 'Account found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to create linked account' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Failed to create linked account' });
         }
     }
     // Update linked account
     async updateLinkedAccount(req, res) {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+            console.error(errors.array());
+            return res.status(400).json({ status: 'fail', data: null, message: 'Validation failed' });
         }
         try {
             const linkedAccount = await LinkedAccount_model_1.default.findByPk(req.params.id);
             if (!linkedAccount) {
-                return res.status(404).json({ error: 'Linked account not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Linked account not found' });
             }
             await linkedAccount.update(req.body);
-            res.json(linkedAccount);
+            res.json({ status: 'success', data: { linkedAccount }, message: 'Linked account updated' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to update linked account' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Failed to update linked account' });
         }
     }
     // Delete linked account
@@ -143,13 +149,13 @@ class LinkedAccountController {
         try {
             const linkedAccount = await LinkedAccount_model_1.default.findByPk(req.params.id);
             if (!linkedAccount) {
-                return res.status(404).json({ error: 'Linked account not found' });
+                return res.status(404).json({ status: 'fail', data: null, message: 'Linked account not found' });
             }
             await linkedAccount.destroy();
-            res.status(204).send();
+            res.status(204).json({ status: 'success', data: {}, message: 'Linked account account' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Failed to delete linked account' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Failed to delete linked account' });
         }
     }
     // Get user's linked accounts
@@ -175,10 +181,11 @@ class LinkedAccountController {
                 ],
                 order: [['createdAt', 'DESC']]
             });
-            res.json(linkedAccounts);
+            res.json({ status: 'success', data: { linkedAccounts }, message: 'Linked accounts found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            console.error(error);
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
     // Get account's linked accounts
@@ -203,10 +210,10 @@ class LinkedAccountController {
                     { model: Account_model_1.default, as: 'account', attributes: ['id', 'accountNumber', 'balance'] }
                 ]
             });
-            res.json(linkedAccounts);
+            res.json({ status: 'success', data: { linkedAccounts }, message: 'Linked accounts found' });
         }
         catch (error) {
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ status: 'fail', data: null, message: 'Internal server error' });
         }
     }
 }
